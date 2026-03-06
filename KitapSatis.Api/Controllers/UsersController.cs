@@ -109,12 +109,12 @@ namespace KitapSatis.Api.Controllers
 
             if (user == null) return NotFound();
 
-            user.FirstName = req.FirstName;
-            user.LastName = req.LastName;
-            user.Email = req.Email;
-            user.PhoneNumber = req.PhoneNumber;
-            user.Department = req.Department;
-            user.StudentNumber = req.StudentNumber;
+            user.FirstName = req.FirstName ?? user.FirstName;
+            user.LastName = req.LastName ?? user.LastName;
+            user.Email = req.Email ?? user.Email;
+            user.PhoneNumber = req.PhoneNumber ?? user.PhoneNumber;
+            user.Department = req.Department ?? user.Department;
+            user.StudentNumber = req.StudentNumber ?? user.StudentNumber;
 
             await _db.SaveChangesAsync();
             return Ok(user);
