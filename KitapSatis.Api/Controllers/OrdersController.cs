@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using KitapSatis.Api.Services;
+using KitapSatis.Api.Models;
 
 [Authorize]
 [ApiController]
@@ -18,20 +19,9 @@ public class OrdersController : ControllerBase
     int CurrentUserId() => int.Parse(User.FindFirstValue("uid")!);
     bool IsAdmin() => User.IsInRole("Admin");
 
-    public record CreateOrderRequest(int BookId, int Quantity);
+    
 
-    [Authorize(Roles = "User,Admin")]
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateOrderRequest req)
-    {
-        var created = await _orderService.CreateFromBookAsync(
-            CurrentUserId(),
-            req.BookId,
-            req.Quantity
-        );
 
-        return Ok(created);
-    }
 
     [Authorize(Roles = "User,Admin")]
     [HttpGet("mine")]
@@ -53,7 +43,32 @@ public class OrdersController : ControllerBase
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(int id)
     {
-        var cancelled = await _orderService.CancelAsync(id, CurrentUserId(), IsAdmin());
-        return Ok(cancelled);
+        try
+        {
+            var cancelled = await _orderService.CancelAsync(id, CurrentUserId(), IsAdmin());
+            return Ok(cancelled);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(); // Return 403 Forbidden 
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    public record UpdateStatusRequest(OrderStatus Status);
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id}/status")]
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest req)
+    {
+        var updated = await _orderService.UpdateStatusAsync(id, req.Status);
+        return Ok(updated);
     }
 }

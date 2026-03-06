@@ -13,5 +13,6 @@ namespace KitapSatis.Api.Services
         
         Task<Order> MarkPaidAsync(int orderId);
         Task<Order> CancelAsync(int orderId, int userId, bool isAdmin);
+        Task<Order> UpdateStatusAsync(int orderId, OrderStatus newStatus);
     }
 }

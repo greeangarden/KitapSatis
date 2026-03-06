@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using BCrypt.Net;
 using KitapSatis.Api.Data;
+using KitapSatis.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -27,17 +28,18 @@ namespace KitapSatis.Api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest req)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == req.Username);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == req.Username || u.Email == req.Username);
             if (user == null) return Unauthorized("Invalid credentials");
 
             if (!BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
                 return Unauthorized("Invalid credentials");
 
+            if (!user.IsActive)
+                return BadRequest(new { message = "Hesabınız askıya alınmıştır veya pasif durumdadır. Yöneticinizle iletişime geçin." });
 
             var claims = new[]
             {
                 new Claim("uid", user.Id.ToString()),
-
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.Role)
             };
@@ -53,7 +55,33 @@ namespace KitapSatis.Api.Controllers
                 signingCredentials: creds
             );
 
-            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token), user = new { user.Id, user.FirstName, user.LastName, user.Email, user.Role } });
+        }
+
+        public record RegisterRequest(string FirstName, string LastName, string Email, string Password, string? StudentNumber, string? Department);
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest req)
+        {
+            if (await _db.Users.AnyAsync(u => u.Email == req.Email || u.Username == req.Email))
+                return BadRequest(new { message = "Bu e-posta adresi zaten kullanımda." });
+
+            var user = new User
+            {
+                Username = req.Email, // Email serves as username
+                Email = req.Email,
+                FirstName = req.FirstName,
+                LastName = req.LastName,
+                StudentNumber = req.StudentNumber,
+                Department = req.Department,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+                Role = "User"
+            };
+
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Kayıt başarılı! Lütfen giriş yapın." });
         }
     }
 }

@@ -28,14 +28,20 @@ namespace KitapSatis.Api.Services
 
             var order = new Order
             {
+                OrderNumber = "#ORD-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss"),
                 UserId = userId,
-                BookId = book.Id,
-                Quantity = quantity,
-                UnitPrice = book.Price,
                 TotalPrice = book.Price * quantity,
-
                 Status = OrderStatus.Pending,
-                CreatedAtUtc = DateTime.UtcNow
+                CreatedAtUtc = DateTime.UtcNow,
+                OrderItems = new List<OrderItem>
+                {
+                    new OrderItem
+                    {
+                        BookId = book.Id,
+                        Quantity = quantity,
+                        UnitPrice = book.Price
+                    }
+                }
             };
 
             _context.Orders.Add(order);
@@ -47,6 +53,7 @@ namespace KitapSatis.Api.Services
         public async Task<List<Order>> GetMineAsync(int userId)
         {
             return await _context.Orders
+                .Include(o => o.OrderItems).ThenInclude(oi => oi.Book)
                 .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.CreatedAtUtc)
                 .ToListAsync();
@@ -56,8 +63,21 @@ namespace KitapSatis.Api.Services
         public async Task<List<Order>> GetAllAsync()
         {
             return await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderItems).ThenInclude(oi => oi.Book)
                 .OrderByDescending(o => o.CreatedAtUtc)
                 .ToListAsync();
+        }
+
+        // ✅ Admin durum günceller
+        public async Task<Order> UpdateStatusAsync(int orderId, OrderStatus newStatus)
+        {
+            var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+            if (order == null) throw new KeyNotFoundException("Order not found");
+
+            order.Status = newStatus;
+            await _context.SaveChangesAsync();
+            return order;
         }
 
         // ✅ Admin ödenmiş yapar
