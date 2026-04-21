@@ -1,4 +1,4 @@
-﻿using KitapSatis.Api.Data;
+using KitapSatis.Api.Data;
 using KitapSatis.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,7 +54,7 @@ namespace KitapSatis.Api.Services
         {
             return await _context.Orders
                 .Include(o => o.OrderItems).ThenInclude(oi => oi.Book)
-                .Where(o => o.UserId == userId)
+                .Where(o => o.UserId == userId && o.Status != OrderStatus.Pending)
                 .OrderByDescending(o => o.CreatedAtUtc)
                 .ToListAsync();
         }
@@ -65,6 +65,7 @@ namespace KitapSatis.Api.Services
             return await _context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems).ThenInclude(oi => oi.Book)
+                .Where(o => o.Status != OrderStatus.Pending)
                 .OrderByDescending(o => o.CreatedAtUtc)
                 .ToListAsync();
         }

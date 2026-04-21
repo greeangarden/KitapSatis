@@ -1,4 +1,4 @@
-﻿using KitapSatis.Api.Data;
+using KitapSatis.Api.Data;
 using KitapSatis.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +19,7 @@ namespace KitapSatis.Api.Controllers
 
         [AllowAnonymous]
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int? categoryId, [FromQuery] string? search)
+        public async Task<IActionResult> GetAll([FromQuery] int? categoryId, [FromQuery] string? search, [FromQuery] decimal? minPrice, [FromQuery] decimal? maxPrice)
         {
             var query = _db.Books
                 .Include(b => b.Category)
@@ -35,6 +35,16 @@ namespace KitapSatis.Api.Controllers
             {
                 var lowerSearch = search.ToLower();
                 query = query.Where(b => b.Name.ToLower().Contains(lowerSearch) || (b.Author != null && b.Author.ToLower().Contains(lowerSearch)));
+            }
+
+            if (minPrice.HasValue)
+            {
+                query = query.Where(b => b.Price >= minPrice.Value);
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(b => b.Price <= maxPrice.Value);
             }
 
             var books = await query.ToListAsync();
